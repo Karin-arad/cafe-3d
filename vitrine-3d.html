@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>ויטרינה — תצוגה תלת-ממדית</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a3e 0%, #2d1b4e 40%, #1a2a3e 100%);
+  color: #eee;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  overflow: auto;
+  user-select: none;
+}
+h1 { margin: 15px 0 5px; font-size: 22px; color: #f0c27f; text-shadow: 0 0 20px rgba(240,194,127,0.3); }
+.subtitle { font-size: 13px; color: #b8a9c9; margin-bottom: 10px; }
+.scene {
+  width: 900px;
+  height: 600px;
+  perspective: 1200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: grab;
+}
+.scene:active { cursor: grabbing; }
+.world {
+  width: 600px;
+  height: 400px;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(-15deg) rotateY(-30deg);
+  transition: transform 0.05s linear;
+}
+
+/* Floor */
+.floor {
+  width: 500px;
+  height: 300px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(135deg, #2a2a4e, #1e2e3e);
+  background-size: 25px 25px, 25px 25px, 100% 100%;
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotateX(90deg);
+  transform-origin: bottom;
+  opacity: 0.6;
+  border-radius: 2px;
+}
+
+/* Wall */
+.wall-bg {
+  width: 500px;
+  height: 350px;
+  background: linear-gradient(180deg, #3d3555, #2a2540);
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) translateZ(-150px);
+  opacity: 0.35;
+  border-bottom: 2px solid #5a4a6a;
+}
+
+/* Labels */
+.label-3d {
+  position: absolute;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(40,20,60,0.75);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Vitrine */
+.vitrine {
+  position: absolute;
+  width: 240px;
+  height: 260px;
+  left: 55%;
+  bottom: 0;
+  transform-style: preserve-3d;
+  transform: translateX(-50%);
+}
+
+/* Fridge */
+.fridge {
+  position: absolute;
+  width: 140px;
+  height: 180px;
+  left: 15%;
+  bottom: 0;
+  transform-style: preserve-3d;
+  transform: translateX(-50%);
+}
+
+/* Drawer face */
+.drawer-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.drawer-handle {
+  width: 40px;
+  height: 6px;
+  background: linear-gradient(90deg, #c49060, #e8b878, #c49060);
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Controls */
+.controls {
+  margin-top: 10px;
+  display: flex;
+  gap: 15px;
+  font-size: 12px;
+  color: #9988aa;
+}
+.controls span { color: #f0c27f; }
+
+/* Color palette dots */
+.palette {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.palette-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.palette-dot:hover { transform: scale(1.2); border-color: white; }
+.palette-dot.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 10px rgba(255,255,255,0.4); }
+</style>
+</head>
+<body>
+
+<h1>ויטרינה — Dry Display Case</h1>
+<div class="subtitle">דיקט ליבנה 18mm | זכוכית מחוסמת 6mm | 120x70x130 cm</div>
+
+<!-- Color palette - at the top so it's always visible -->
+<div class="palette" id="palette">
+  <div class="palette-dot active" data-theme="warm" style="background:linear-gradient(135deg,#e8a87c,#d68c5e);" title="Warm Oak"></div>
+  <div class="palette-dot" data-theme="honey" style="background:linear-gradient(135deg,#f0c27f,#d4a24e);" title="Honey"></div>
+  <div class="palette-dot" data-theme="sage" style="background:linear-gradient(135deg,#a8c5a0,#7fa878);" title="Sage Green"></div>
+  <div class="palette-dot" data-theme="blush" style="background:linear-gradient(135deg,#e8b4b8,#d4888e);" title="Blush Pink"></div>
+  <div class="palette-dot" data-theme="ocean" style="background:linear-gradient(135deg,#7ec8c8,#5ba8a8);" title="Ocean"></div>
+  <div class="palette-dot" data-theme="lavender" style="background:linear-gradient(135deg,#b8a9d4,#9482b8);" title="Lavender"></div>
+</div>
+
+<div class="scene" id="scene">
+  <div class="world" id="world">
+
+    <div class="floor"></div>
+    <div class="wall-bg"></div>
+
+    <!-- ===== FRIDGE ===== -->
+    <div class="fridge">
+      <div style="position:absolute; width:140px; height:180px; background:linear-gradient(180deg, #e0e0e0, #c8c8c8); border:2px solid #aaa; border-radius:4px; transform:translateZ(70px); bottom:0; box-shadow: 2px 0 15px rgba(0,0,0,0.2);">
+        <div style="position:absolute;right:10px;top:30px;bottom:30px;width:4px;background:linear-gradient(180deg,#bbb,#999);border-radius:2px;"></div>
+        <div class="label-3d" style="bottom:50%;left:50%;transform:translate(-50%,50%);">מקרר<br><span style="font-size:9px;color:#bbb;">70x70x90</span></div>
+      </div>
+      <div style="position:absolute; width:140px; height:180px; background:#b8b8b8; border:2px solid #aaa; transform:translateZ(-70px) rotateY(180deg); bottom:0;"></div>
+      <div style="position:absolute; width:140px; height:180px; background:linear-gradient(180deg,#d5d5d5,#c0c0c0); border:2px solid #aaa; transform: rotateY(-90deg) translateZ(0px); transform-origin:left center; bottom:0;"></div>
+      <div style="position:absolute; width:140px; height:180px; background:linear-gradient(180deg,#d5d5d5,#c0c0c0); border:2px solid #aaa; transform: rotateY(90deg) translateZ(140px); transform-origin:left center; bottom:0;"></div>
+      <div style="position:absolute; width:140px; height:140px; background:#ddd; border:2px solid #aaa; transform: rotateX(90deg) translateZ(180px); transform-origin:top; bottom:0;"></div>
+    </div>
+
+    <!-- ===== VITRINE ===== -->
+    <div class="vitrine">
+
+      <!-- SOCLE 10cm = 20px -->
+      <div style="position:absolute; bottom:0; width:240px; height:20px; transform-style:preserve-3d;">
+        <div class="v-wood-front" style="position:absolute;width:240px;height:20px;border:1px solid rgba(0,0,0,0.15);transform:translateZ(70px);border-radius:0 0 3px 3px;"></div>
+        <div class="v-wood-back" style="position:absolute;width:240px;height:20px;border:1px solid rgba(0,0,0,0.15);transform:translateZ(-70px) rotateY(180deg);"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:20px;border:1px solid rgba(0,0,0,0.15);transform:rotateY(-90deg) translateZ(0px);transform-origin:left;"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:20px;border:1px solid rgba(0,0,0,0.15);transform:rotateY(90deg) translateZ(240px);transform-origin:left;"></div>
+      </div>
+
+      <!-- LOWER DISPLAY 42cm = 84px -->
+      <div style="position:absolute; bottom:20px; width:240px; height:84px; transform-style:preserve-3d;">
+        <div class="v-glass" style="position:absolute;width:240px;height:84px;transform:translateZ(70px);border-radius:1px;">
+          <div class="label-3d" style="bottom:50%;left:50%;transform:translate(-50%,50%);">כריכים</div>
+        </div>
+        <div style="position:absolute;width:240px;height:84px;border:1px dashed rgba(100,220,160,0.4);transform:translateZ(-70px) rotateY(180deg);"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:84px;border:1px solid rgba(0,0,0,0.12);opacity:0.85;transform:rotateY(-90deg) translateZ(0px);transform-origin:left;"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:84px;border:1px solid rgba(0,0,0,0.12);opacity:0.85;transform:rotateY(90deg) translateZ(240px);transform-origin:left;"></div>
+        <div class="v-wood-shelf" style="position:absolute;width:230px;height:135px;border:1px solid rgba(0,0,0,0.1);transform:rotateX(90deg) translateZ(42px);transform-origin:top;left:5px;top:0;opacity:0.4;"></div>
+      </div>
+
+      <!-- DIVIDER 4px -->
+      <div style="position:absolute; bottom:104px; width:240px; height:4px; transform-style:preserve-3d;">
+        <div class="v-wood-dark" style="position:absolute;width:240px;height:4px;transform:translateZ(70px);"></div>
+        <div class="v-wood-dark" style="position:absolute;width:140px;height:4px;transform:rotateY(-90deg) translateZ(0px);transform-origin:left;"></div>
+        <div class="v-wood-dark" style="position:absolute;width:140px;height:4px;transform:rotateY(90deg) translateZ(240px);transform-origin:left;"></div>
+      </div>
+
+      <!-- UPPER DISPLAY 42cm = 84px -->
+      <div style="position:absolute; bottom:108px; width:240px; height:84px; transform-style:preserve-3d;">
+        <div class="v-glass" style="position:absolute;width:240px;height:84px;transform:translateZ(70px);border-radius:1px;">
+          <div class="label-3d" style="bottom:50%;left:50%;transform:translate(-50%,50%);">מאפים</div>
+        </div>
+        <div style="position:absolute;width:240px;height:84px;border:1px dashed rgba(100,220,160,0.4);transform:translateZ(-70px) rotateY(180deg);"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:84px;border:1px solid rgba(0,0,0,0.12);opacity:0.85;transform:rotateY(-90deg) translateZ(0px);transform-origin:left;"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:84px;border:1px solid rgba(0,0,0,0.12);opacity:0.85;transform:rotateY(90deg) translateZ(240px);transform-origin:left;"></div>
+        <div class="v-wood-shelf" style="position:absolute;width:230px;height:135px;border:1px solid rgba(0,0,0,0.1);transform:rotateX(90deg) translateZ(42px);transform-origin:top;left:5px;top:0;opacity:0.4;"></div>
+      </div>
+
+      <!-- DIVIDER 4px -->
+      <div style="position:absolute; bottom:192px; width:240px; height:4px; transform-style:preserve-3d;">
+        <div class="v-wood-dark" style="position:absolute;width:240px;height:4px;transform:translateZ(70px);"></div>
+        <div class="v-wood-dark" style="position:absolute;width:140px;height:4px;transform:rotateY(-90deg) translateZ(0px);transform-origin:left;"></div>
+        <div class="v-wood-dark" style="position:absolute;width:140px;height:4px;transform:rotateY(90deg) translateZ(240px);transform-origin:left;"></div>
+      </div>
+
+      <!-- DRAWER SECTION 28cm = 56px -->
+      <div style="position:absolute; bottom:196px; width:240px; height:56px; transform-style:preserve-3d;">
+        <div class="drawer-face v-wood-front" style="position:absolute;width:240px;height:56px;border:2px solid rgba(0,0,0,0.15);transform:translateZ(70px);box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+          <div class="drawer-handle"></div>
+        </div>
+        <div class="v-wood-back" style="position:absolute;width:240px;height:56px;border:2px solid rgba(0,0,0,0.15);transform:translateZ(-70px) rotateY(180deg);"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:56px;border:1px solid rgba(0,0,0,0.12);transform:rotateY(-90deg) translateZ(0px);transform-origin:left;"></div>
+        <div class="v-wood-side" style="position:absolute;width:140px;height:56px;border:1px solid rgba(0,0,0,0.12);transform:rotateY(90deg) translateZ(240px);transform-origin:left;"></div>
+        <div class="label-3d" style="top:-20px;left:50%;transform:translateX(-50%) translateZ(75px);">מגירת קופה + ארנקים</div>
+      </div>
+
+      <!-- COUNTER TOP 6px -->
+      <div style="position:absolute; bottom:252px; width:248px; height:6px; left:-4px; transform-style:preserve-3d;">
+        <div class="v-wood-dark" style="position:absolute;width:248px;height:6px;border:2px solid rgba(0,0,0,0.2);transform:translateZ(73px);border-radius:1px;box-shadow:0 -1px 8px rgba(0,0,0,0.1);"></div>
+        <div class="v-wood-dark" style="position:absolute;width:148px;height:6px;transform:rotateY(-90deg) translateZ(0px);transform-origin:left;"></div>
+        <div class="v-wood-dark" style="position:absolute;width:148px;height:6px;transform:rotateY(90deg) translateZ(248px);transform-origin:left;"></div>
+        <div class="v-counter-top" style="position:absolute;width:248px;height:148px;border:1px solid rgba(0,0,0,0.1);transform:rotateX(90deg) translateZ(-3px);transform-origin:top;"></div>
+      </div>
+
+      <!-- iPad + Sumup -->
+      <div style="position:absolute;bottom:260px;left:60px;width:50px;height:35px;background:linear-gradient(145deg,#2a2a2a,#444);border:2px solid #555;border-radius:5px;transform:translateZ(20px) rotateX(-10deg);box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+        <div style="position:absolute;color:#8af;font-size:8px;top:50%;left:50%;transform:translate(-50%,-50%);">iPad</div>
+      </div>
+      <div style="position:absolute;bottom:258px;left:140px;width:30px;height:25px;background:linear-gradient(145deg,#444,#666);border:1px solid #777;border-radius:3px;transform:translateZ(20px);box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+        <div style="position:absolute;color:#aed;font-size:7px;top:50%;left:50%;transform:translate(-50%,-50%);">SU</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <span>גרור לסיבוב</span> | רוחב: 120cm | עומק: 70cm | גובה: 130cm
+</div>
+
+<!-- palette moved to top -->
+
+<script>
+// Themes
+const themes = {
+  warm: {
+    woodFront: 'linear-gradient(180deg, #e8a87c, #d68c5e)',
+    woodBack: '#c47a4e',
+    woodSide: 'linear-gradient(180deg, #dea070, #c88058)',
+    woodDark: 'linear-gradient(180deg, #c47a4e, #a86040)',
+    woodShelf: 'rgba(232,168,124,0.35)',
+    counterTop: 'linear-gradient(135deg, #c47a4e, #b06a3e)',
+    glass: 'rgba(255,220,180,0.18)',
+    glassBorder: 'rgba(240,180,120,0.5)',
+  },
+  honey: {
+    woodFront: 'linear-gradient(180deg, #f0c27f, #d4a24e)',
+    woodBack: '#c49040',
+    woodSide: 'linear-gradient(180deg, #e8b870, #d0a048)',
+    woodDark: 'linear-gradient(180deg, #c49040, #a87830)',
+    woodShelf: 'rgba(240,194,127,0.35)',
+    counterTop: 'linear-gradient(135deg, #c49040, #b08030)',
+    glass: 'rgba(255,230,170,0.18)',
+    glassBorder: 'rgba(220,180,80,0.5)',
+  },
+  sage: {
+    woodFront: 'linear-gradient(180deg, #a8c5a0, #88a880)',
+    woodBack: '#78986e',
+    woodSide: 'linear-gradient(180deg, #98b890, #80a078)',
+    woodDark: 'linear-gradient(180deg, #78986e, #608858)',
+    woodShelf: 'rgba(168,197,160,0.35)',
+    counterTop: 'linear-gradient(135deg, #78986e, #688860)',
+    glass: 'rgba(200,240,200,0.18)',
+    glassBorder: 'rgba(130,190,130,0.5)',
+  },
+  blush: {
+    woodFront: 'linear-gradient(180deg, #e8b4b8, #d4949a)',
+    woodBack: '#c48088',
+    woodSide: 'linear-gradient(180deg, #dea8ae, #cc8e94)',
+    woodDark: 'linear-gradient(180deg, #c48088, #a86870)',
+    woodShelf: 'rgba(232,180,184,0.35)',
+    counterTop: 'linear-gradient(135deg, #c48088, #b07078)',
+    glass: 'rgba(255,210,215,0.18)',
+    glassBorder: 'rgba(220,150,160,0.5)',
+  },
+  ocean: {
+    woodFront: 'linear-gradient(180deg, #7ec8c8, #5eaaaa)',
+    woodBack: '#4e9898',
+    woodSide: 'linear-gradient(180deg, #70bebe, #58a6a6)',
+    woodDark: 'linear-gradient(180deg, #4e9898, #3e8080)',
+    woodShelf: 'rgba(126,200,200,0.35)',
+    counterTop: 'linear-gradient(135deg, #4e9898, #3e8888)',
+    glass: 'rgba(180,240,240,0.18)',
+    glassBorder: 'rgba(100,190,190,0.5)',
+  },
+  lavender: {
+    woodFront: 'linear-gradient(180deg, #b8a9d4, #9c8aba)',
+    woodBack: '#8878a8',
+    woodSide: 'linear-gradient(180deg, #ae9ec8, #9484b0)',
+    woodDark: 'linear-gradient(180deg, #8878a8, #706090)',
+    woodShelf: 'rgba(184,169,212,0.35)',
+    counterTop: 'linear-gradient(135deg, #8878a8, #786898)',
+    glass: 'rgba(210,200,240,0.18)',
+    glassBorder: 'rgba(160,140,200,0.5)',
+  }
+};
+
+function applyTheme(name) {
+  const t = themes[name];
+  document.querySelectorAll('.v-wood-front').forEach(el => el.style.background = t.woodFront);
+  document.querySelectorAll('.v-wood-back').forEach(el => el.style.background = t.woodBack);
+  document.querySelectorAll('.v-wood-side').forEach(el => el.style.background = t.woodSide);
+  document.querySelectorAll('.v-wood-dark').forEach(el => el.style.background = t.woodDark);
+  document.querySelectorAll('.v-wood-shelf').forEach(el => el.style.background = t.woodShelf);
+  document.querySelectorAll('.v-counter-top').forEach(el => el.style.background = t.counterTop);
+  document.querySelectorAll('.v-glass').forEach(el => {
+    el.style.background = t.glass;
+    el.style.border = `1.5px solid ${t.glassBorder}`;
+  });
+
+  // Update active dot
+  document.querySelectorAll('.palette-dot').forEach(d => d.classList.remove('active'));
+  document.querySelector(`[data-theme="${name}"]`).classList.add('active');
+}
+
+// Init
+applyTheme('warm');
+
+// Palette clicks
+document.getElementById('palette').addEventListener('click', (e) => {
+  const dot = e.target.closest('.palette-dot');
+  if (dot) applyTheme(dot.dataset.theme);
+});
+
+// Drag rotation
+const scene = document.getElementById('scene');
+const world = document.getElementById('world');
+let isDragging = false;
+let startX, startY;
+let rotX = -15, rotY = -30;
+
+scene.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  scene.style.cursor = 'grabbing';
+});
+document.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  rotY += (e.clientX - startX) * 0.4;
+  rotX -= (e.clientY - startY) * 0.4;
+  rotX = Math.max(-60, Math.min(10, rotX));
+  world.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  startX = e.clientX;
+  startY = e.clientY;
+});
+document.addEventListener('mouseup', () => { isDragging = false; scene.style.cursor = 'grab'; });
+
+// Touch
+scene.addEventListener('touchstart', (e) => { isDragging = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY; });
+document.addEventListener('touchmove', (e) => {
+  if (!isDragging) return;
+  rotY += (e.touches[0].clientX - startX) * 0.4;
+  rotX -= (e.touches[0].clientY - startY) * 0.4;
+  rotX = Math.max(-60, Math.min(10, rotX));
+  world.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+});
+document.addEventListener('touchend', () => { isDragging = false; });
+</script>
+</body>
+</html>

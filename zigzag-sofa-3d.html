@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zigzag Sofa — 3D Visualization</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a1a; overflow: hidden; font-family: Arial, sans-serif; }
+  canvas { display: block; }
+
+  #info {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(20,18,15,0.88);
+    color: #ccc;
+    padding: 20px 24px;
+    border-radius: 12px;
+    max-width: 260px;
+    font-size: 13px;
+    line-height: 1.7;
+    direction: rtl;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(200,184,150,0.15);
+  }
+  #info h2 { color: #C8B896; margin-bottom: 6px; font-size: 20px; letter-spacing: 1px; }
+  #info .sub { color: #888; font-size: 11px; margin-bottom: 14px; display: block; }
+  #info .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  #info .dim { color: #E0CFA0; font-weight: bold; }
+  #info .divider { border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 0; }
+
+  #colors {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(20,18,15,0.88);
+    padding: 16px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(200,184,150,0.15);
+  }
+  .color-label { color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; }
+  .color-btn {
+    width: 48px; height: 32px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+  .color-btn:hover { transform: scale(1.1); }
+  .color-btn.active { border-color: #fff; box-shadow: 0 0 12px rgba(200,184,150,0.3); }
+  .color-name { color: #999; font-size: 9px; text-align: center; }
+
+  #controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #555;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  #rotate-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(20,18,15,0.88);
+    color: #888;
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 11px;
+    backdrop-filter: blur(8px);
+    transition: color 0.3s;
+  }
+  #rotate-btn:hover { color: #C8B896; }
+  #rotate-btn.active { color: #C8B896; border-color: rgba(200,184,150,0.4); }
+</style>
+</head>
+<body>
+
+<div id="info">
+  <h2>Zigzag Sofa</h2>
+  <span class="sub">Sky (Faux Leather) · Closed Base · 2 Niches + 3 Peaks</span>
+  <div class="row"><span>Total length</span><span class="dim">~433 cm</span></div>
+  <div class="row"><span>Zigzag depth</span><span class="dim">~50 cm</span></div>
+  <div class="row"><span>Back height</span><span class="dim">83 cm</span></div>
+  <div class="row"><span>Seat surface</span><span class="dim">~51 cm</span></div>
+  <div class="row"><span>Seat depth</span><span class="dim">50 cm</span></div>
+  <div class="divider"></div>
+  <div class="row"><span>Modules</span><span class="dim">6</span></div>
+  <div class="row"><span>Niches</span><span class="dim">2</span></div>
+  <div class="row"><span>Wall peaks</span><span class="dim">3</span></div>
+  <div class="row"><span>Niche angle</span><span class="dim">110°</span></div>
+  <div class="row"><span>Seats</span><span class="dim">~12</span></div>
+</div>
+
+<div id="colors">
+  <div class="color-label">Sky Color</div>
+  <div class="color-btn active" style="background:#C8B896;" data-color="0xC8B896"></div>
+  <div class="color-name">Warm Beige</div>
+  <div class="color-btn" style="background:#6B7F5E;" data-color="0x6B7F5E"></div>
+  <div class="color-name">Olive Green</div>
+  <div class="color-btn" style="background:#6B5038;" data-color="0x6B5038"></div>
+  <div class="color-name">Dark Brown</div>
+</div>
+
+<div id="controls">DRAG TO ROTATE · SCROLL TO ZOOM</div>
+<button id="rotate-btn" class="active">Auto Rotate</button>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// =============================================
+// SCENE SETUP
+// =============================================
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x222222);
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 3000);
+camera.position.set(350, 260, 450);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 35, 40);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.minDistance = 120;
+controls.maxDistance = 900;
+controls.maxPolarAngle = Math.PI / 2 - 0.02;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.7;
+controls.update();
+
+// =============================================
+// LIGHTING
+// =============================================
+
+scene.add(new THREE.AmbientLight(0xfff8f0, 0.5));
+
+const sunLight = new THREE.DirectionalLight(0xfff0d6, 1.4);
+sunLight.position.set(150, 350, 250);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.near = 10;
+sunLight.shadow.camera.far = 1000;
+sunLight.shadow.camera.left = -400;
+sunLight.shadow.camera.right = 400;
+sunLight.shadow.camera.top = 300;
+sunLight.shadow.camera.bottom = -100;
+sunLight.shadow.bias = -0.001;
+scene.add(sunLight);
+
+scene.add(new THREE.DirectionalLight(0xd0e0ff, 0.3).translateX(-250).translateY(120).translateZ(-150));
+scene.add(new THREE.DirectionalLight(0xffe8cc, 0.25).translateX(-100).translateY(80).translateZ(300));
+
+// =============================================
+// MATERIALS
+// =============================================
+
+let currentColor = new THREE.Color(0xC8B896);
+
+const skyMat = new THREE.MeshStandardMaterial({
+  color: currentColor.clone(),
+  roughness: 0.58, metalness: 0.02,
+});
+
+const cushionMat = new THREE.MeshStandardMaterial({
+  color: currentColor.clone().multiplyScalar(0.92),
+  roughness: 0.48, metalness: 0.02,
+});
+
+const backMat = new THREE.MeshStandardMaterial({
+  color: currentColor.clone().multiplyScalar(0.97),
+  roughness: 0.55, metalness: 0.02,
+});
+
+const baseTrimMat = new THREE.MeshStandardMaterial({
+  color: currentColor.clone().multiplyScalar(0.72),
+  roughness: 0.6, metalness: 0.03,
+});
+
+const cushionTopMat = new THREE.MeshStandardMaterial({
+  color: currentColor.clone().multiplyScalar(0.88),
+  roughness: 0.45, metalness: 0.02,
+});
+
+const floorMat = new THREE.MeshStandardMaterial({ color: 0xC4B69C, roughness: 0.85 });
+const wallMat = new THREE.MeshStandardMaterial({ color: 0xE5E0DA, roughness: 0.92 });
+
+// =============================================
+// ENVIRONMENT (floor, wall, baseboard)
+// =============================================
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(1400, 800), floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(0, -0.5, 200);
+floor.receiveShadow = true;
+scene.add(floor);
+
+const wallMesh = new THREE.Mesh(new THREE.PlaneGeometry(1400, 350), wallMat);
+wallMesh.position.set(0, 175, -8);
+wallMesh.receiveShadow = true;
+scene.add(wallMesh);
+
+const baseboard = new THREE.Mesh(
+  new THREE.BoxGeometry(1400, 10, 2),
+  new THREE.MeshStandardMaterial({ color: 0xD5CFC5, roughness: 0.7 })
+);
+baseboard.position.set(0, 5, -6);
+scene.add(baseboard);
+
+// =============================================
+// ZIGZAG SOFA — 8 MODULES, 3 IDENTICAL NICHES
+// =============================================
+//
+// Linear zigzag layout (top view):
+//
+//   WALL_____________________________________
+//   mod1\ /mod2\ mod3/ mod4\ mod5/ mod6
+//     Λ    V      Λ     V      Λ
+//   peak niche1 peak  niche2 peak
+//
+// 6 modules along the wall
+// 2 V-niches toward the room
+// 3 wall peaks (including 2 at the ends)
+// Every niche is bounded by peaks on both sides
+//
+// Module angle: ±35° from straight line (110° between modules)
+// Module length: 88 cm
+// Projected length per module: ~72.1 cm
+// Total along wall: ~433 cm
+
+const ANG = Math.PI * 35 / 180;  // 35 degrees
+const MODULE_LEN = 88;
+const PROJ_X = MODULE_LEN * Math.cos(ANG);  // ~72.1 cm
+const PROJ_Z = MODULE_LEN * Math.sin(ANG);  // ~50.5 cm
+const CENTER_Z = PROJ_Z / 2;  // midpoint Z for all modules
+const NUM_MODULES = 6;
+const TOTAL_X = NUM_MODULES * PROJ_X;
+const HALF_X = TOTAL_X / 2;
+
+// 8 modules: alternating +ANG, -ANG
+// +ANG = peak side (toward wall), -ANG = niche side (toward room)
+// Sequence: +ANG, -ANG, +ANG, -ANG, +ANG, -ANG, +ANG, -ANG
+// Transitions: Λ, V, Λ, V, Λ = 3 peaks, 2 niches
+const moduleData = [];
+for (let i = 0; i < NUM_MODULES; i++) {
+  moduleData.push({
+    x: PROJ_X * (i + 0.5) - HALF_X,
+    z: CENTER_Z,
+    rotY: (i % 2 === 0) ? ANG : -ANG,
+  });
+}
+
+// All meshes for color switching
+const meshGroups = { sky: [], cushion: [], back: [], trim: [], cushionTop: [] };
+
+moduleData.forEach((data) => {
+  const group = new THREE.Group();
+
+  // ----- Closed base -----
+  const base = new THREE.Mesh(new THREE.BoxGeometry(87, 43, 49), skyMat);
+  base.position.set(0, 21.5, 25);
+  base.castShadow = true;
+  base.receiveShadow = true;
+  group.add(base);
+  meshGroups.sky.push(base);
+
+  // Base bottom trim
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(87.5, 2, 49.5), baseTrimMat);
+  trim.position.set(0, 1, 25);
+  group.add(trim);
+  meshGroups.trim.push(trim);
+
+  // ----- Seat cushion -----
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(86, 7.5, 50), cushionMat);
+  seat.position.set(0, 47, 25.5);
+  seat.castShadow = true;
+  group.add(seat);
+  meshGroups.cushion.push(seat);
+
+  // Subtle top highlight on cushion
+  const seatTop = new THREE.Mesh(new THREE.BoxGeometry(84, 1.5, 48), cushionTopMat);
+  seatTop.position.set(0, 51.2, 25.5);
+  group.add(seatTop);
+  meshGroups.cushionTop.push(seatTop);
+
+  // ----- Back panel -----
+  const back = new THREE.Mesh(new THREE.BoxGeometry(87, 28, 9), backMat);
+  back.position.set(0, 65, 5);
+  back.castShadow = true;
+  group.add(back);
+  meshGroups.back.push(back);
+
+  // Back top cap
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(85, 4, 8), cushionMat);
+  cap.position.set(0, 81, 5);
+  cap.castShadow = true;
+  group.add(cap);
+  meshGroups.cushion.push(cap);
+
+  group.position.set(data.x, 0, data.z);
+  group.rotation.y = data.rotY;
+  scene.add(group);
+});
+
+// =============================================
+// CAFE TABLES — one per niche
+// =============================================
+
+const tableMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.3, metalness: 0.6 });
+const tableTopMat = new THREE.MeshStandardMaterial({ color: 0xD4A574, roughness: 0.4, metalness: 0.05 });
+
+function createCafeTable(x, z) {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(28, 28, 3, 24), tableTopMat);
+  top.position.set(0, 74, 0);
+  top.castShadow = true;
+  top.receiveShadow = true;
+  g.add(top);
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, 72, 12), tableMat);
+  leg.position.set(0, 36, 0);
+  leg.castShadow = true;
+  g.add(leg);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(18, 20, 2, 16), tableMat);
+  base.position.set(0, 1, 0);
+  base.receiveShadow = true;
+  g.add(base);
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+
+// Peak centers: between modules (0,1), (2,3), (4,5)
+// Peaks are at wall side — tables placed in front of peaks
+const peakTableZ = 70;
+const peakCenterXs = [
+  PROJ_X * 1 - HALF_X,   // peak 1 (left)
+  PROJ_X * 3 - HALF_X,   // peak 2 (center)
+  PROJ_X * 5 - HALF_X,   // peak 3 (right)
+];
+peakCenterXs.forEach(px => createCafeTable(px, peakTableZ));
+
+// =============================================
+// CAFE CHAIRS — 2 per table, facing the sofa
+// =============================================
+
+const chairMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.3 });
+const chairSeatMat = new THREE.MeshStandardMaterial({ color: 0x4A4A4A, roughness: 0.6 });
+
+function createChair(x, z, rotY) {
+  const g = new THREE.Group();
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(38, 3, 36), chairSeatMat);
+  seat.position.set(0, 44, 0);
+  seat.castShadow = true;
+  g.add(seat);
+  const legGeo = new THREE.CylinderGeometry(1.2, 1.2, 43, 8);
+  [[-14, -13], [14, -13], [-14, 13], [14, 13]].forEach(([lx, lz]) => {
+    const leg = new THREE.Mesh(legGeo, chairMat);
+    leg.position.set(lx, 21.5, lz);
+    leg.castShadow = true;
+    g.add(leg);
+  });
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(36, 32, 3), chairMat);
+  backrest.position.set(0, 62, -16);
+  backrest.castShadow = true;
+  g.add(backrest);
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  scene.add(g);
+}
+
+const chairZ = peakTableZ + 38;
+const chairSpacing = 28;
+peakCenterXs.forEach(px => {
+  createChair(px - chairSpacing, chairZ, Math.PI);
+  createChair(px + chairSpacing, chairZ, Math.PI);
+});
+
+// =============================================
+// NICHE LABELS (floor markings — subtle circles)
+// =============================================
+
+const nicheMarkMat = new THREE.MeshStandardMaterial({
+  color: 0xB8A888, roughness: 0.9, transparent: true, opacity: 0.15,
+});
+peakCenterXs.forEach(px => {
+  const mark = new THREE.Mesh(new THREE.CircleGeometry(35, 32), nicheMarkMat);
+  mark.rotation.x = -Math.PI / 2;
+  mark.position.set(px, 0.2, peakTableZ);
+  scene.add(mark);
+});
+
+// =============================================
+// TRIANGULAR SHELVES — filling gaps between sofa & wall
+// =============================================
+
+const shelfMat = new THREE.MeshStandardMaterial({ color: 0xD4A574, roughness: 0.4, metalness: 0.05 });
+
+// Niche center X positions (between peaks)
+const nicheCenterXs = [
+  PROJ_X * 2 - HALF_X,   // niche 1
+  PROJ_X * 4 - HALF_X,   // niche 2
+];
+
+nicheCenterXs.forEach((nx, i) => {
+  const peakLeftX = peakCenterXs[i];      // left peak X
+  const peakRightX = peakCenterXs[i + 1]; // right peak X
+  const shelfDepth = PROJ_Z;  // match the full zigzag depth (~50.5 cm)
+  const shelfHeight = 83;  // full height from floor to top of back
+
+  // Triangle shape (in XZ plane, extruded along Y for full height)
+  const shape = new THREE.Shape();
+  shape.moveTo(peakLeftX, 0);           // left peak at wall (z=0)
+  shape.lineTo(nx, -shelfDepth);        // niche center (toward sofa, z=+shelfDepth after rotation)
+  shape.lineTo(peakRightX, 0);          // right peak at wall (z=0)
+  shape.closePath();
+
+  const shelfGeo = new THREE.ExtrudeGeometry(shape, { depth: shelfHeight, bevelEnabled: false });
+  const shelf = new THREE.Mesh(shelfGeo, shelfMat);
+  shelf.rotation.x = -Math.PI / 2;  // lay flat (extrude upward)
+  shelf.position.set(0, 0, 0);       // from floor up
+  shelf.castShadow = true;
+  shelf.receiveShadow = true;
+  scene.add(shelf);
+
+  // ----- Plant pot on top -----
+  const potMat = new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.7 });
+  const plantMat = new THREE.MeshStandardMaterial({ color: 0x4A7C3F, roughness: 0.8 });
+
+  const potGroup = new THREE.Group();
+
+  // Pot body (tapered cylinder)
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(7, 5, 12, 16), potMat);
+  pot.position.set(0, 6, 0);
+  pot.castShadow = true;
+  potGroup.add(pot);
+
+  // Soil top
+  const soil = new THREE.Mesh(
+    new THREE.CylinderGeometry(6.5, 6.5, 1, 16),
+    new THREE.MeshStandardMaterial({ color: 0x3E2723, roughness: 0.9 })
+  );
+  soil.position.set(0, 12.5, 0);
+  potGroup.add(soil);
+
+  // Plant foliage (cluster of spheres)
+  const foliagePositions = [
+    [0, 22, 0, 8],
+    [-4, 18, 3, 5],
+    [5, 19, -2, 5],
+    [0, 26, 1, 5],
+  ];
+  foliagePositions.forEach(([fx, fy, fz, fr]) => {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(fr, 12, 10), plantMat);
+    leaf.position.set(fx, fy, fz);
+    leaf.castShadow = true;
+    potGroup.add(leaf);
+  });
+
+  // Position pot on top of the filled volume
+  potGroup.position.set(nx, shelfHeight, shelfDepth / 3);
+  scene.add(potGroup);
+});
+
+// =============================================
+// COLOR SWITCHING
+// =============================================
+
+function updateAllColors(hex) {
+  const c = new THREE.Color(hex);
+  currentColor.copy(c);
+
+  meshGroups.sky.forEach(m => m.material.color.copy(c));
+  meshGroups.trim.forEach(m => m.material.color.copy(c.clone().multiplyScalar(0.72)));
+  meshGroups.cushion.forEach(m => m.material.color.copy(c.clone().multiplyScalar(0.92)));
+  meshGroups.cushionTop.forEach(m => m.material.color.copy(c.clone().multiplyScalar(0.88)));
+  meshGroups.back.forEach(m => m.material.color.copy(c.clone().multiplyScalar(0.97)));
+}
+
+document.querySelectorAll('.color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateAllColors(parseInt(btn.dataset.color));
+  });
+});
+
+// =============================================
+// AUTO ROTATE TOGGLE
+// =============================================
+
+document.getElementById('rotate-btn').addEventListener('click', function () {
+  controls.autoRotate = !controls.autoRotate;
+  this.classList.toggle('active');
+});
+
+// =============================================
+// RESIZE & RENDER
+// =============================================
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
