@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>בית קפה — מודל תלת מימדי</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    overflow: hidden;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  canvas { display: block; }
+  #info {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(0,0,0,0.75);
+    color: #e0e0e0;
+    padding: 16px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.8;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+    direction: rtl;
+    max-width: 260px;
+  }
+  #info h3 {
+    color: #D4A574;
+    margin-bottom: 8px;
+    font-size: 16px;
+  }
+  #info kbd {
+    background: rgba(255,255,255,0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  #labels {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .label-3d {
+    position: absolute;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    white-space: nowrap;
+    background: rgba(0,0,0,0.5);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  #floor-toggle {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+  }
+  #floor-toggle button {
+    background: rgba(0,0,0,0.7);
+    color: #e0e0e0;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+  }
+  #floor-toggle button:hover, #floor-toggle button.active {
+    background: rgba(212,165,116,0.6);
+    border-color: #D4A574;
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div id="info">
+  <h3>בית קפה — תלת מימד</h3>
+  <kbd>גרור</kbd> סיבוב<br>
+  <kbd>גלגלת</kbd> זום<br>
+  <kbd>Shift+גרור</kbd> הזזה
+</div>
+
+<div id="labels"></div>
+
+<div id="floor-toggle">
+  <button class="active" onclick="setView('perspective')">פרספקטיבה</button>
+  <button onclick="setView('top')">מבט מלמעלה</button>
+  <button onclick="setView('front')">מבט מלפנים</button>
+  <button onclick="setView('side')">מבט מהצד</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ============================================================
+// בית קפה — מודל תלת מימדי
+// מבוסס על תוכנית הקומה plan.png
+// מידות בסנטימטרים, סקייל 1:100 (1 unit = 1 meter)
+// ============================================================
+
+// --- Scene Setup ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(12, 10, 14);
+camera.lookAt(5, 0, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(5, 1, 4);
+controls.maxPolarAngle = Math.PI / 2.05;
+controls.minDistance = 3;
+controls.maxDistance = 30;
+
+// --- Materials ---
+const mat = {
+  floor: new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.8, metalness: 0.05 }),
+  floorTile: new THREE.MeshStandardMaterial({ color: 0x9E9E9E, roughness: 0.6, metalness: 0.1 }),
+  wall: new THREE.MeshStandardMaterial({ color: 0xE8E0D4, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.25 }),
+  wallInner: new THREE.MeshStandardMaterial({ color: 0xD5CEC4, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.25 }),
+  glass: new THREE.MeshStandardMaterial({ color: 0x88BBDD, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3 }),
+  wood: new THREE.MeshStandardMaterial({ color: 0xD4A574, roughness: 0.6, metalness: 0.05 }),
+  woodDark: new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.5, metalness: 0.05 }),
+  counter: new THREE.MeshStandardMaterial({ color: 0x4A4A4A, roughness: 0.3, metalness: 0.4 }),
+  cushion: new THREE.MeshStandardMaterial({ color: 0x3A3A3A, roughness: 0.9, metalness: 0 }),
+  cushionGreen: new THREE.MeshStandardMaterial({ color: 0x4A6741, roughness: 0.9, metalness: 0 }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.3, metalness: 0.8 }),
+  ceiling: new THREE.MeshStandardMaterial({ color: 0xF5F0EB, roughness: 0.95, metalness: 0, side: THREE.BackSide }),
+  door: new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.5, metalness: 0.1 }),
+  stair: new THREE.MeshStandardMaterial({ color: 0xBBAAAA, roughness: 0.7, metalness: 0.1 }),
+};
+
+// --- Helpers ---
+function box(w, h, d, material, x, y, z) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+// ============================================================
+// FLOOR PLAN DIMENSIONS (approx from plan, in meters)
+// Total width: ~14m, Total depth: ~8m
+// Seating area: ~6m x 7m (left side)
+// Kitchen + service: ~8m x 5m (right side)
+// ============================================================
+
+const WALL_H = 3.2;   // גובה קירות
+const WALL_T = 0.15;  // עובי קיר
+
+// --- Ground / Floor ---
+// אזור ישיבה — פרקט
+box(7, 0.05, 8, mat.floor, 3.5, -0.025, 4);
+// אזור מטבח/שירותים — אריחים
+box(7, 0.05, 8, mat.floorTile, 10.5, -0.025, 4);
+
+// --- Outer Walls ---
+// קיר שמאלי (חזית — עם ויטרינה)
+box(WALL_T, WALL_H, 8, mat.wall, 0, WALL_H/2, 4);
+
+// קיר תחתון (כניסה) — חלק שמאלי
+box(2.5, WALL_H, WALL_T, mat.wall, 1.25, WALL_H/2, 0);
+// פתח כניסה 1.5m
+// קיר תחתון — המשך
+box(10, WALL_H, WALL_T, mat.wall, 9, WALL_H/2, 0);
+
+// קיר ימני
+box(WALL_T, WALL_H, 8, mat.wall, 14, WALL_H/2, 4);
+
+// קיר עליון (אחורי)
+box(14, WALL_H, WALL_T, mat.wall, 7, WALL_H/2, 8);
+
+// --- ויטרינה (חלון גדול בקיר שמאלי) ---
+// חלון ויטרינה
+box(0.02, 2, 5, mat.glass, 0.05, 1.5, 4);
+
+// --- Inner Walls ---
+// קיר הפרדה בין ישיבה למטבח
+box(WALL_T, WALL_H, 4.5, mat.wallInner, 7, WALL_H/2, 5.75);
+// פתח מעבר
+box(WALL_T, WALL_H, 2, mat.wallInner, 7, WALL_H/2, 1);
+
+// קירות שירותים
+box(3, WALL_H, WALL_T, mat.wallInner, 9, WALL_H/2, 5.5);
+box(WALL_T, WALL_H, 2.5, mat.wallInner, 10.5, WALL_H/2, 6.75);
+
+// קיר מטבח
+box(3, WALL_H, WALL_T, mat.wallInner, 12.5, WALL_H/2, 4);
+
+// --- Ceiling (partial, transparent-ish) ---
+const ceilGeo = new THREE.PlaneGeometry(14, 8);
+const ceilMat = new THREE.MeshStandardMaterial({
+  color: 0xF5F0EB, roughness: 0.95, transparent: true, opacity: 0.3, side: THREE.DoubleSide
+});
+const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
+ceiling.rotation.x = Math.PI / 2;
+ceiling.position.set(7, WALL_H, 4);
+scene.add(ceiling);
+
+// ============================================================
+// אזור ישיבה — BOOTHS
+// ============================================================
+
+function createBooth(x, z, rotation) {
+  const group = new THREE.Group();
+
+  // ספסל 1 (גב + מושב)
+  // גב - 120cm רוחב, 90cm גובה
+  const back1 = box(1.2, 0.9, 0.08, mat.woodDark, 0, 0.9, -0.45);
+  // ריפוד גב
+  box(1.1, 0.75, 0.05, mat.cushion, 0, 0.85, -0.4);
+  // מושב
+  box(1.2, 0.06, 0.5, mat.woodDark, 0, 0.45, -0.2);
+  // ריפוד מושב
+  box(1.1, 0.05, 0.45, mat.cushion, 0, 0.5, -0.2);
+
+  // ספסל 2 (מול)
+  box(1.2, 0.9, 0.08, mat.woodDark, 0, 0.9, 0.45);
+  box(1.1, 0.75, 0.05, mat.cushion, 0, 0.85, 0.4);
+  box(1.2, 0.06, 0.5, mat.woodDark, 0, 0.45, 0.2);
+  box(1.1, 0.05, 0.45, mat.cushion, 0, 0.5, 0.2);
+
+  // שולחן באמצע
+  box(1.1, 0.04, 0.7, mat.wood, 0, 0.75, 0);
+  // רגל שולחן
+  box(0.06, 0.72, 0.06, mat.metal, 0, 0.375, 0);
+  // בסיס שולחן
+  box(0.5, 0.02, 0.4, mat.metal, 0, 0.01, 0);
+}
+
+// Booths לאורך הקיר השמאלי (4 booths)
+for (let i = 0; i < 4; i++) {
+  createBooth(1.5, 1.5 + i * 1.6, 0);
+}
+
+// ============================================================
+// ספת זיגזג — לאורך הקיר האחורי של אזור הישיבה
+// 6 מודולים, 2 נישות, 3 פיקים
+// אורך כולל: ~433 ס"מ = 4.33 מ'
+// עומק זיגזג: ~50 ס"מ = 0.5 מ'
+// גובה גב: 83 ס"מ = 0.83 מ'
+// ============================================================
+
+const zigzagMat = {
+  sky: new THREE.MeshStandardMaterial({ color: 0xC8B896, roughness: 0.58, metalness: 0.02 }),
+  cushion: new THREE.MeshStandardMaterial({ color: 0xB8AA8A, roughness: 0.48, metalness: 0.02 }),
+  back: new THREE.MeshStandardMaterial({ color: 0xC2B492, roughness: 0.55, metalness: 0.02 }),
+  trim: new THREE.MeshStandardMaterial({ color: 0x90856C, roughness: 0.6, metalness: 0.03 }),
+  cushionTop: new THREE.MeshStandardMaterial({ color: 0xB0A280, roughness: 0.45, metalness: 0.02 }),
+};
+
+{
+  const ANG = Math.PI * 35 / 180;
+  const MODULE_LEN = 0.88;  // 88cm in meters
+  const PROJ_X = MODULE_LEN * Math.cos(ANG);  // ~0.721m
+  const PROJ_Z = MODULE_LEN * Math.sin(ANG);  // ~0.505m
+  const CENTER_Z = PROJ_Z / 2;
+  const NUM_MODULES = 6;
+  const TOTAL_X = NUM_MODULES * PROJ_X;
+  const HALF_X = TOTAL_X / 2;
+
+  // Position zigzag sofa along the back wall (z=7.85, centered at x=3.5)
+  const SOFA_X_OFFSET = 3.5;  // center of seating area
+  const SOFA_Z_OFFSET = 7.65;  // near back wall
+
+  for (let i = 0; i < NUM_MODULES; i++) {
+    const mx = PROJ_X * (i + 0.5) - HALF_X;
+    const mz = CENTER_Z;
+    const rotY = (i % 2 === 0) ? ANG : -ANG;
+
+    const group = new THREE.Group();
+
+    // בסיס סגור
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(0.87, 0.43, 0.49),
+      zigzagMat.sky
+    );
+    base.position.set(0, 0.215, -0.25);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    group.add(base);
+
+    // פס תחתון
+    const trim = new THREE.Mesh(
+      new THREE.BoxGeometry(0.875, 0.02, 0.495),
+      zigzagMat.trim
+    );
+    trim.position.set(0, 0.01, -0.25);
+    group.add(trim);
+
+    // כרית מושב
+    const seat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.86, 0.075, 0.50),
+      zigzagMat.cushion
+    );
+    seat.position.set(0, 0.47, -0.255);
+    seat.castShadow = true;
+    group.add(seat);
+
+    // הדגשה עליונה
+    const seatTop = new THREE.Mesh(
+      new THREE.BoxGeometry(0.84, 0.015, 0.48),
+      zigzagMat.cushionTop
+    );
+    seatTop.position.set(0, 0.512, -0.255);
+    group.add(seatTop);
+
+    // גב
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(0.87, 0.28, 0.09),
+      zigzagMat.back
+    );
+    back.position.set(0, 0.65, -0.05);
+    back.castShadow = true;
+    group.add(back);
+
+    // כיפה עליונה
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.85, 0.04, 0.08),
+      zigzagMat.cushion
+    );
+    cap.position.set(0, 0.81, -0.05);
+    cap.castShadow = true;
+    group.add(cap);
+
+    group.position.set(mx + SOFA_X_OFFSET, 0, -(mz) + SOFA_Z_OFFSET);
+    group.rotation.y = rotY;
+    scene.add(group);
+  }
+
+  // שולחנות קפה — אחד ליד כל פיק (3 שולחנות)
+  const peakXs = [
+    PROJ_X * 1 - HALF_X + SOFA_X_OFFSET,
+    PROJ_X * 3 - HALF_X + SOFA_X_OFFSET,
+    PROJ_X * 5 - HALF_X + SOFA_X_OFFSET,
+  ];
+  const tableZ = SOFA_Z_OFFSET - PROJ_Z - 0.15;
+
+  peakXs.forEach(px => {
+    // משטח שולחן עגול
+    const topGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.03, 24);
+    const top = new THREE.Mesh(topGeo, mat.wood);
+    top.position.set(px, 0.74, tableZ);
+    top.castShadow = true;
+    top.receiveShadow = true;
+    scene.add(top);
+
+    // רגל
+    const legGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.72, 12);
+    const leg = new THREE.Mesh(legGeo, mat.metal);
+    leg.position.set(px, 0.36, tableZ);
+    leg.castShadow = true;
+    scene.add(leg);
+
+    // בסיס
+    const baseGeo = new THREE.CylinderGeometry(0.18, 0.20, 0.02, 16);
+    const base = new THREE.Mesh(baseGeo, mat.metal);
+    base.position.set(px, 0.01, tableZ);
+    base.receiveShadow = true;
+    scene.add(base);
+  });
+
+  // כיסאות מול השולחנות (2 כיסאות לכל שולחן)
+  const chairZ = tableZ - 0.38;
+  peakXs.forEach(px => {
+    [-0.28, 0.28].forEach(offset => {
+      const cx = px + offset;
+      // מושב
+      box(0.38, 0.03, 0.36, mat.wood, cx, 0.44, chairZ);
+      // רגליים
+      box(0.025, 0.43, 0.025, mat.metal, cx - 0.14, 0.215, chairZ - 0.13);
+      box(0.025, 0.43, 0.025, mat.metal, cx + 0.14, 0.215, chairZ - 0.13);
+      box(0.025, 0.43, 0.025, mat.metal, cx - 0.14, 0.215, chairZ + 0.13);
+      box(0.025, 0.43, 0.025, mat.metal, cx + 0.14, 0.215, chairZ + 0.13);
+      // גב כיסא
+      box(0.36, 0.32, 0.03, mat.wood, cx, 0.62, chairZ - 0.16);
+    });
+  });
+
+  // עציצים בנישות (2 נישות)
+  const nicheXs = [
+    PROJ_X * 2 - HALF_X + SOFA_X_OFFSET,
+    PROJ_X * 4 - HALF_X + SOFA_X_OFFSET,
+  ];
+  const potMat = new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.7 });
+  const plantMat = new THREE.MeshStandardMaterial({ color: 0x4A7C3F, roughness: 0.8 });
+  const soilMat = new THREE.MeshStandardMaterial({ color: 0x3E2723, roughness: 0.9 });
+
+  nicheXs.forEach(nx => {
+    // עציץ
+    const potGeo = new THREE.CylinderGeometry(0.07, 0.05, 0.12, 16);
+    const pot = new THREE.Mesh(potGeo, potMat);
+    pot.position.set(nx, 0.89, SOFA_Z_OFFSET - 0.15);
+    pot.castShadow = true;
+    scene.add(pot);
+
+    // אדמה
+    const soilGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.01, 16);
+    const soil = new THREE.Mesh(soilGeo, soilMat);
+    soil.position.set(nx, 0.955, SOFA_Z_OFFSET - 0.15);
+    scene.add(soil);
+
+    // עלווה
+    [[0, 0.22, 0, 0.08], [-0.04, 0.18, 0.03, 0.05], [0.05, 0.19, -0.02, 0.05], [0, 0.26, 0.01, 0.05]].forEach(([fx, fy, fz, fr]) => {
+      const leafGeo = new THREE.SphereGeometry(fr, 12, 10);
+      const leaf = new THREE.Mesh(leafGeo, plantMat);
+      leaf.position.set(nx + fx, 0.83 + fy, SOFA_Z_OFFSET - 0.15 + fz);
+      leaf.castShadow = true;
+      scene.add(leaf);
+    });
+  });
+}
+
+// ============================================================
+// דלפק הגשה
+// ============================================================
+
+// דלפק ראשי — בצורת L
+// חלק אופקי (לאורך)
+box(3.5, 0.06, 0.7, mat.counter, 5, 0.95, 3);
+box(3.5, 0.95, 0.6, mat.woodDark, 5, 0.475, 3);
+
+// חלק ניצב
+box(0.7, 0.06, 2, mat.counter, 3.3, 0.95, 2);
+box(0.6, 0.95, 2, mat.woodDark, 3.3, 0.475, 2);
+
+// מדף תחתון דלפק
+box(3.3, 0.03, 0.5, mat.wood, 5, 0.3, 3);
+
+// כיסאות בר מול הדלפק
+for (let i = 0; i < 4; i++) {
+  const bx = 3.8 + i * 0.8;
+  // מושב בר
+  box(0.35, 0.04, 0.35, mat.wood, bx, 0.68, 2.2);
+  // רגל בר
+  box(0.04, 0.66, 0.04, mat.metal, bx, 0.34, 2.2);
+  // דריכה
+  box(0.25, 0.02, 0.02, mat.metal, bx, 0.25, 2.35);
+  // בסיס
+  box(0.25, 0.02, 0.25, mat.metal, bx, 0.01, 2.2);
+}
+
+// ============================================================
+// ויטרינה — Dry Display Case (120x70x130 cm)
+// ליד דלפק ההגשה
+// ============================================================
+
+{
+  const VX = 6.2;  // מיקום X — ליד קצה הדלפק
+  const VZ = 3.0;  // מיקום Z — בקו הדלפק
+  const VW = 1.2;  // רוחב 120cm
+  const VD = 0.7;  // עומק 70cm
+  const VH = 1.3;  // גובה 130cm
+
+  const vitWood = new THREE.MeshStandardMaterial({ color: 0xE8A87C, roughness: 0.5, metalness: 0.05 });
+  const vitWoodDark = new THREE.MeshStandardMaterial({ color: 0xC47A4E, roughness: 0.5, metalness: 0.05 });
+  const vitGlass = new THREE.MeshStandardMaterial({
+    color: 0xFFDCB4, roughness: 0.1, metalness: 0.1,
+    transparent: true, opacity: 0.2
+  });
+  const vitShelf = new THREE.MeshStandardMaterial({ color: 0xE8A87C, roughness: 0.4, metalness: 0.05, transparent: true, opacity: 0.5 });
+
+  // סוקל תחתון (10cm)
+  box(VW, 0.10, VD, vitWood, VX, 0.05, VZ);
+
+  // תא תחתון — כריכים (42cm)
+  // צדדים עץ
+  box(0.02, 0.42, VD, vitWood, VX - VW/2 + 0.01, 0.31, VZ);
+  box(0.02, 0.42, VD, vitWood, VX + VW/2 - 0.01, 0.31, VZ);
+  // גב
+  box(VW, 0.42, 0.02, vitWood, VX, 0.31, VZ - VD/2 + 0.01);
+  // זכוכית קדמית
+  box(VW, 0.42, 0.01, vitGlass, VX, 0.31, VZ + VD/2 - 0.005);
+  // מדף
+  box(VW - 0.04, 0.015, VD - 0.04, vitShelf, VX, 0.31, VZ);
+
+  // חוצץ (4cm)
+  box(VW, 0.04, VD, vitWoodDark, VX, 0.54, VZ);
+
+  // תא עליון — מאפים (42cm)
+  box(0.02, 0.42, VD, vitWood, VX - VW/2 + 0.01, 0.77, VZ);
+  box(0.02, 0.42, VD, vitWood, VX + VW/2 - 0.01, 0.77, VZ);
+  box(VW, 0.42, 0.02, vitWood, VX, 0.77, VZ - VD/2 + 0.01);
+  box(VW, 0.42, 0.01, vitGlass, VX, 0.77, VZ + VD/2 - 0.005);
+  box(VW - 0.04, 0.015, VD - 0.04, vitShelf, VX, 0.77, VZ);
+
+  // חוצץ עליון
+  box(VW, 0.04, VD, vitWoodDark, VX, 1.0, VZ);
+
+  // מגירת קופה (28cm)
+  box(VW, 0.28, VD, vitWood, VX, 1.16, VZ);
+  // ידית מגירה
+  const handleMat = new THREE.MeshStandardMaterial({ color: 0xC49060, roughness: 0.3, metalness: 0.4 });
+  box(0.4, 0.03, 0.02, handleMat, VX, 1.16, VZ + VD/2 + 0.01);
+
+  // משטח עליון (6cm)
+  box(VW + 0.08, 0.06, VD + 0.08, vitWoodDark, VX, 1.33, VZ);
+
+  // iPad על המשטח
+  const screenMat = new THREE.MeshStandardMaterial({ color: 0x2A2A2A, roughness: 0.2, metalness: 0.5 });
+  box(0.24, 0.02, 0.17, screenMat, VX - 0.2, 1.37, VZ + 0.1);
+
+  // SumUp
+  box(0.08, 0.03, 0.06, mat.metal, VX + 0.2, 1.375, VZ + 0.1);
+
+  // === מקרר ליד הוויטרינה ===
+  const fridgeMat = new THREE.MeshStandardMaterial({ color: 0xD0D0D0, roughness: 0.4, metalness: 0.3 });
+  const FX = VX + VW/2 + 0.45;  // ליד הוויטרינה
+  box(0.7, 0.9, 0.7, fridgeMat, FX, 0.45, VZ);
+  // ידית מקרר
+  box(0.02, 0.5, 0.03, mat.metal, FX + 0.33, 0.5, VZ + 0.3);
+}
+
+// ============================================================
+// מטבח
+// ============================================================
+
+// משטח עבודה מטבח
+box(3, 0.06, 0.7, mat.counter, 9.5, 0.9, 0.5);
+box(3, 0.85, 0.6, mat.wallInner, 9.5, 0.425, 0.5);
+
+// משטח עבודה נגדי
+box(3, 0.06, 0.7, mat.counter, 9.5, 0.9, 2.5);
+box(3, 0.85, 0.6, mat.wallInner, 9.5, 0.425, 2.5);
+
+// מקרר
+box(0.8, 2, 0.7, mat.metal, 12.5, 1, 0.5);
+
+// תנור/כיריים (סימבולי)
+box(0.6, 0.1, 0.6, mat.metal, 11.5, 0.96, 0.5);
+
+// ============================================================
+// שירותים
+// ============================================================
+
+// דלתות שירותים
+box(0.8, 2.1, 0.06, mat.door, 8.5, 1.05, 5.55);
+box(0.8, 2.1, 0.06, mat.door, 9.5, 1.05, 5.55);
+
+// ============================================================
+// מדרגות (ימין)
+// ============================================================
+
+const stairCount = 12;
+for (let i = 0; i < stairCount; i++) {
+  box(1.2, 0.16, 0.28, mat.stair, 13, 0.08 + i * 0.16, 7.5 - i * 0.28);
+}
+// מעקה
+box(0.04, 1.2, stairCount * 0.28, mat.metal, 12.35, 1, 7.5 - stairCount * 0.14);
+box(0.04, 1.2, stairCount * 0.28, mat.metal, 13.65, 1, 7.5 - stairCount * 0.14);
+
+// ============================================================
+// דלת כניסה
+// ============================================================
+
+box(1.4, 2.4, 0.08, mat.glass, 3.2, 1.2, 0.05);
+// מסגרת דלת
+box(1.5, 0.08, 0.1, mat.metal, 3.2, 2.44, 0.05);
+box(0.05, 2.4, 0.1, mat.metal, 2.5, 1.2, 0.05);
+box(0.05, 2.4, 0.1, mat.metal, 3.9, 1.2, 0.05);
+
+// ============================================================
+// תאורה
+// ============================================================
+
+// Ambient
+const ambient = new THREE.AmbientLight(0xfff0e0, 0.4);
+scene.add(ambient);
+
+// תאורה ראשית מלמעלה
+const dirLight = new THREE.DirectionalLight(0xfff5e6, 0.8);
+dirLight.position.set(5, 10, 3);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.left = -15;
+dirLight.shadow.camera.right = 15;
+dirLight.shadow.camera.top = 10;
+dirLight.shadow.camera.bottom = -10;
+scene.add(dirLight);
+
+// נקודות אור פנימיות — מעל הדלפק
+const barLight = new THREE.PointLight(0xFFD700, 0.8, 5);
+barLight.position.set(5, 2.8, 3);
+barLight.castShadow = true;
+scene.add(barLight);
+
+// אור חם באזור הישיבה
+const seatLight1 = new THREE.PointLight(0xFFA54F, 0.5, 6);
+seatLight1.position.set(2, 2.8, 5);
+scene.add(seatLight1);
+
+const seatLight2 = new THREE.PointLight(0xFFA54F, 0.5, 6);
+seatLight2.position.set(3.5, 2.8, 7);
+scene.add(seatLight2);
+
+// אור מטבח — לבן יותר
+const kitchenLight = new THREE.PointLight(0xFFFFFF, 0.6, 6);
+kitchenLight.position.set(10, 2.8, 1.5);
+scene.add(kitchenLight);
+
+// גופי תאורה תלויים (סימבולי)
+function pendantLight(x, z) {
+  // חוט
+  box(0.01, 0.6, 0.01, mat.metal, x, WALL_H - 0.3, z);
+  // אהיל
+  const lampGeo = new THREE.CylinderGeometry(0.08, 0.15, 0.15, 16);
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.6 });
+  const lamp = new THREE.Mesh(lampGeo, lampMat);
+  lamp.position.set(x, WALL_H - 0.65, z);
+  scene.add(lamp);
+}
+
+pendantLight(5, 3);
+pendantLight(4.2, 3);
+pendantLight(5.8, 3);
+pendantLight(2, 5);
+pendantLight(2, 6.5);
+pendantLight(3.5, 7);
+
+// ============================================================
+// Labels (3D -> 2D projection)
+// ============================================================
+
+const labels = [
+  { text: 'אזור ישיבה', pos: new THREE.Vector3(3, 2, 5) },
+  { text: 'ספת זיגזג', pos: new THREE.Vector3(3.5, 1.2, 7.5) },
+  { text: 'ויטרינה', pos: new THREE.Vector3(6.2, 1.8, 3) },
+  { text: 'דלפק הגשה', pos: new THREE.Vector3(5, 1.5, 3) },
+  { text: 'מטבח', pos: new THREE.Vector3(10, 2, 1.5) },
+  { text: 'שירותים', pos: new THREE.Vector3(9, 2, 6.5) },
+  { text: 'מדרגות', pos: new THREE.Vector3(13, 2, 6) },
+  { text: 'כניסה', pos: new THREE.Vector3(3.2, 1.5, 0.3) },
+];
+
+const labelContainer = document.getElementById('labels');
+const labelEls = labels.map(l => {
+  const el = document.createElement('div');
+  el.className = 'label-3d';
+  el.textContent = l.text;
+  labelContainer.appendChild(el);
+  return { el, pos: l.pos };
+});
+
+function updateLabels() {
+  labelEls.forEach(({ el, pos }) => {
+    const projected = pos.clone().project(camera);
+    if (projected.z > 1) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'block';
+    el.style.left = ((projected.x + 1) / 2 * window.innerWidth) + 'px';
+    el.style.top = ((-projected.y + 1) / 2 * window.innerHeight) + 'px';
+  });
+}
+
+// ============================================================
+// Camera Presets
+// ============================================================
+
+function setView(view) {
+  document.querySelectorAll('#floor-toggle button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  const dur = 600;
+  const target = { x: 5, y: 1, z: 4 };
+  let pos;
+
+  switch(view) {
+    case 'top':
+      pos = { x: 5, y: 18, z: 4.01 };
+      break;
+    case 'front':
+      pos = { x: 5, y: 3, z: -8 };
+      break;
+    case 'side':
+      pos = { x: -8, y: 3, z: 4 };
+      break;
+    default:
+      pos = { x: 12, y: 10, z: 14 };
+  }
+
+  // Simple animation
+  const startPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+  const startTarget = { x: controls.target.x, y: controls.target.y, z: controls.target.z };
+  const startTime = Date.now();
+
+  function animateCamera() {
+    const elapsed = Date.now() - startTime;
+    const t = Math.min(elapsed / dur, 1);
+    const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+
+    camera.position.x = startPos.x + (pos.x - startPos.x) * ease;
+    camera.position.y = startPos.y + (pos.y - startPos.y) * ease;
+    camera.position.z = startPos.z + (pos.z - startPos.z) * ease;
+
+    controls.target.x = startTarget.x + (target.x - startTarget.x) * ease;
+    controls.target.y = startTarget.y + (target.y - startTarget.y) * ease;
+    controls.target.z = startTarget.z + (target.z - startTarget.z) * ease;
+
+    if (t < 1) requestAnimationFrame(animateCamera);
+  }
+  animateCamera();
+}
+
+// ============================================================
+// Animation Loop
+// ============================================================
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  updateLabels();
+  renderer.render(scene, camera);
+}
+animate();
+
+// --- Resize ---
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
