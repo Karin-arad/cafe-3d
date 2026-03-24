@@ -1,0 +1,317 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1800" width="1200" height="1800" font-family="Arial, sans-serif">
+  <style>
+    .title { font-size: 24px; font-weight: bold; fill: #333; }
+    .subtitle { font-size: 18px; fill: #555; }
+    .label { font-size: 13px; fill: #333; }
+    .dim { font-size: 13px; fill: #cc0000; font-weight: bold; }
+    .dim-line { stroke: #cc0000; stroke-width: 1; stroke-dasharray: 5,3; }
+    .dim-arrow { fill: #cc0000; }
+    .outline { stroke: #333; stroke-width: 2; fill: none; }
+    .inner { stroke: #666; stroke-width: 1; fill: none; }
+    .wood { fill: #D4A574; }
+    .wood-dark { fill: #B8956A; }
+    .glass { fill: rgba(173, 216, 230, 0.3); stroke: #4a90d9; stroke-width: 1.5; }
+    .foam { fill: #e8e8e8; }
+    .section-bg { fill: #fafafa; stroke: #ddd; stroke-width: 1; }
+    .note { font-size: 11px; fill: #666; font-style: italic; }
+    .spec-title { font-size: 14px; font-weight: bold; fill: #333; }
+  </style>
+
+  <!-- Header -->
+  <text x="600" y="40" text-anchor="middle" class="title">Vitrine — Dry Display Case</text>
+  <text x="600" y="65" text-anchor="middle" class="subtitle">Birch Plywood 18mm | Glass Front | Cash Drawer | 120×70×130 cm</text>
+
+  <!-- ==================== FRONT VIEW ==================== -->
+  <rect x="50" y="90" width="1100" height="520" class="section-bg" rx="5"/>
+  <text x="600" y="120" text-anchor="middle" class="spec-title">Front View (מבט מלפנים)</text>
+
+  <!-- Fridge (right side in real life = left in front view facing it) -->
+  <g transform="translate(150, 200)">
+    <!-- Fridge body -->
+    <rect x="0" y="108" width="175" height="225" fill="#ddd" stroke="#999" stroke-width="2" rx="3"/>
+    <text x="87" y="230" text-anchor="middle" class="label">מקרר</text>
+    <text x="87" y="250" text-anchor="middle" class="note">70×70×90</text>
+    <!-- Fridge door handle -->
+    <line x1="160" y1="180" x2="160" y2="280" stroke="#999" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Vitrine body -->
+  <g transform="translate(370, 200)">
+    <!-- Main outer frame -->
+    <rect x="0" y="0" width="300" height="333" class="outline" fill="#f5e6d0"/>
+
+    <!-- Base/Socle -->
+    <rect x="0" y="308" width="300" height="25" class="wood" stroke="#333" stroke-width="2"/>
+    <text x="150" y="325" text-anchor="middle" class="label" font-size="11">סוקל — 10 cm</text>
+
+    <!-- Lower display - sandwiches -->
+    <rect x="4" y="200" width="292" height="105" class="glass"/>
+    <text x="150" y="245" text-anchor="middle" class="label">כריכים</text>
+    <text x="150" y="262" text-anchor="middle" class="note">42 cm — חזית זכוכית</text>
+    <!-- Shelf inside lower -->
+    <line x1="20" y1="250" x2="280" y2="250" stroke="#999" stroke-width="1" stroke-dasharray="8,4"/>
+    <text x="285" y="254" class="note" font-size="9">מדף מתכוונן</text>
+
+    <!-- Divider -->
+    <rect x="0" y="195" width="300" height="5" class="wood-dark" stroke="#333" stroke-width="1"/>
+
+    <!-- Upper display - pastries -->
+    <rect x="4" y="88" width="292" height="105" class="glass"/>
+    <text x="150" y="133" text-anchor="middle" class="label">מאפים</text>
+    <text x="150" y="150" text-anchor="middle" class="note">42 cm — חזית זכוכית</text>
+    <!-- Shelf inside upper -->
+    <line x1="20" y1="140" x2="280" y2="140" stroke="#999" stroke-width="1" stroke-dasharray="8,4"/>
+
+    <!-- Divider -->
+    <rect x="0" y="83" width="300" height="5" class="wood-dark" stroke="#333" stroke-width="1"/>
+
+    <!-- Cash drawer section - closed front -->
+    <rect x="0" y="13" width="300" height="70" class="wood" stroke="#333" stroke-width="2"/>
+    <!-- Drawer handle (recessed) -->
+    <rect x="120" y="42" width="60" height="8" fill="#8B7355" rx="2"/>
+    <text x="150" y="58" text-anchor="middle" class="label" font-size="11">מגירת קופה + ארנקים</text>
+    <text x="150" y="72" text-anchor="middle" class="note">28 cm — ידית שקועה</text>
+
+    <!-- Counter top -->
+    <rect x="-5" y="5" width="310" height="8" class="wood-dark" stroke="#333" stroke-width="2"/>
+
+    <!-- iPad + Sumup on top -->
+    <rect x="80" y="-25" width="60" height="30" fill="#333" rx="3"/>
+    <text x="110" y="-5" text-anchor="middle" fill="white" font-size="9">iPad</text>
+    <rect x="170" y="-18" width="35" height="23" fill="#555" rx="2"/>
+    <text x="187" y="-2" text-anchor="middle" fill="white" font-size="8">Sumup</text>
+  </g>
+
+  <!-- FRONT VIEW Dimension lines -->
+  <g transform="translate(370, 200)">
+    <!-- Total width -->
+    <line x1="0" y1="360" x2="300" y2="360" class="dim-line"/>
+    <polygon points="0,360 8,356 8,364" class="dim-arrow"/>
+    <polygon points="300,360 292,356 292,364" class="dim-arrow"/>
+    <text x="150" y="378" text-anchor="middle" class="dim">120 cm</text>
+
+    <!-- Total height right side -->
+    <line x1="330" y1="5" x2="330" y2="333" class="dim-line"/>
+    <polygon points="330,5 326,13 334,13" class="dim-arrow"/>
+    <polygon points="330,333 326,325 334,325" class="dim-arrow"/>
+    <text x="355" y="170" text-anchor="middle" class="dim" transform="rotate(90, 355, 170)">130 cm</text>
+
+    <!-- Section heights right side -->
+    <!-- Base -->
+    <line x1="310" y1="308" x2="310" y2="333" class="dim-line"/>
+    <text x="318" y="325" class="dim" font-size="10">10</text>
+
+    <!-- Lower display -->
+    <line x1="310" y1="200" x2="310" y2="305" class="dim-line"/>
+    <text x="318" y="258" class="dim" font-size="10">42</text>
+
+    <!-- Upper display -->
+    <line x1="310" y1="88" x2="310" y2="193" class="dim-line"/>
+    <text x="318" y="145" class="dim" font-size="10">42</text>
+
+    <!-- Drawer -->
+    <line x1="310" y1="13" x2="310" y2="83" class="dim-line"/>
+    <text x="318" y="52" class="dim" font-size="10">28</text>
+  </g>
+
+  <!-- Fridge dimension -->
+  <g transform="translate(150, 200)">
+    <line x1="0" y1="360" x2="175" y2="360" class="dim-line"/>
+    <polygon points="0,360 8,356 8,364" class="dim-arrow"/>
+    <polygon points="175,360 167,356 167,364" class="dim-arrow"/>
+    <text x="87" y="378" text-anchor="middle" class="dim">70 cm</text>
+
+    <!-- Fridge height -->
+    <line x1="-25" y1="108" x2="-25" y2="333" class="dim-line"/>
+    <polygon points="-25,108 -29,116 -21,116" class="dim-arrow"/>
+    <polygon points="-25,333 -29,325 -21,325" class="dim-arrow"/>
+    <text x="-45" y="225" text-anchor="middle" class="dim" transform="rotate(-90, -45, 225)">90 cm</text>
+  </g>
+
+  <!-- Total width dimension -->
+  <line x1="150" y1="590" x2="670" y2="590" class="dim-line"/>
+  <polygon points="150,590 158,586 158,594" class="dim-arrow"/>
+  <polygon points="670,590 662,586 662,594" class="dim-arrow"/>
+  <text x="410" y="607" text-anchor="middle" class="dim">190 cm (total) — פתח תריס 200 cm</text>
+
+  <!-- ==================== SIDE VIEW ==================== -->
+  <rect x="50" y="630" width="1100" height="520" class="section-bg" rx="5"/>
+  <text x="600" y="660" text-anchor="middle" class="spec-title">Side Section (חתך צד — מבט מימין)</text>
+
+  <g transform="translate(250, 720)">
+    <!-- Floor line -->
+    <line x1="-30" y1="390" x2="350" y2="390" stroke="#333" stroke-width="2" stroke-dasharray="10,5"/>
+    <text x="360" y="394" class="label">floor</text>
+
+    <!-- Wall -->
+    <rect x="195" y="-30" width="20" height="420" fill="#e0e0e0" stroke="#999" stroke-width="1"/>
+    <text x="205" y="-10" text-anchor="middle" class="label">WALL</text>
+
+    <!-- Base/Socle -->
+    <rect x="10" y="353" width="185" height="37" class="wood" stroke="#333" stroke-width="2"/>
+    <text x="100" y="376" text-anchor="middle" class="label" font-size="11">סוקל 10cm</text>
+
+    <!-- Lower display area -->
+    <rect x="10" y="197" width="185" height="154" fill="#fff" stroke="#333" stroke-width="2"/>
+    <!-- Glass front -->
+    <rect x="10" y="197" width="4" height="154" fill="#4a90d9" opacity="0.6"/>
+    <text x="18" y="280" class="label" font-size="10" fill="#4a90d9" transform="rotate(-90, 18, 280)">זכוכית 6mm</text>
+    <!-- Shelf -->
+    <line x1="20" y1="275" x2="185" y2="275" stroke="#999" stroke-width="1" stroke-dasharray="6,3"/>
+    <text x="100" y="250" text-anchor="middle" class="label">כריכים</text>
+    <!-- Back panel -->
+    <rect x="185" y="197" width="10" height="154" class="wood-dark" stroke="#333" stroke-width="1"/>
+
+    <!-- Divider plywood -->
+    <rect x="10" y="190" width="185" height="7" class="wood-dark" stroke="#333" stroke-width="1"/>
+
+    <!-- Upper display area -->
+    <rect x="10" y="35" width="185" height="154" fill="#fff" stroke="#333" stroke-width="2"/>
+    <!-- Glass front -->
+    <rect x="10" y="35" width="4" height="154" fill="#4a90d9" opacity="0.6"/>
+    <!-- Shelf -->
+    <line x1="20" y1="112" x2="185" y2="112" stroke="#999" stroke-width="1" stroke-dasharray="6,3"/>
+    <text x="100" y="95" text-anchor="middle" class="label">מאפים</text>
+    <!-- Back panel -->
+    <rect x="185" y="35" width="10" height="154" class="wood-dark" stroke="#333" stroke-width="1"/>
+
+    <!-- Divider plywood -->
+    <rect x="10" y="28" width="185" height="7" class="wood-dark" stroke="#333" stroke-width="1"/>
+
+    <!-- Drawer section -->
+    <rect x="10" y="-40" width="185" height="68" class="wood" stroke="#333" stroke-width="2"/>
+    <!-- Drawer inside -->
+    <rect x="20" y="-30" width="130" height="30" fill="#c4a882" stroke="#8B7355" stroke-width="1"/>
+    <text x="85" y="-10" text-anchor="middle" class="label" font-size="10">מגירת קופה</text>
+    <!-- Wallets area -->
+    <rect x="155" y="-30" width="30" height="48" fill="#c4a882" stroke="#8B7355" stroke-width="1"/>
+    <text x="170" y="-2" text-anchor="middle" class="label" font-size="8">ארנקים</text>
+    <!-- Drawer slides -->
+    <line x1="15" y1="-15" x2="15" y2="-15" stroke="#666" stroke-width="2"/>
+
+    <!-- Counter top -->
+    <rect x="5" y="-48" width="195" height="8" class="wood-dark" stroke="#333" stroke-width="2"/>
+
+    <!-- iPad on top -->
+    <rect x="50" y="-72" width="50" height="24" fill="#333" rx="2"/>
+    <text x="75" y="-56" text-anchor="middle" fill="white" font-size="9">iPad</text>
+
+    <!-- DIMENSION LINES -->
+    <!-- Total depth -->
+    <line x1="10" y1="415" x2="195" y2="415" class="dim-line"/>
+    <polygon points="10,415 18,411 18,419" class="dim-arrow"/>
+    <polygon points="195,415 187,411 187,419" class="dim-arrow"/>
+    <text x="100" y="432" text-anchor="middle" class="dim">70 cm (עומק)</text>
+
+    <!-- Total height -->
+    <line x1="-20" y1="-48" x2="-20" y2="390" class="dim-line"/>
+    <polygon points="-20,-48 -24,-40 -16,-40" class="dim-arrow"/>
+    <polygon points="-20,390 -24,382 -16,382" class="dim-arrow"/>
+    <text x="-45" y="170" text-anchor="middle" class="dim" transform="rotate(-90, -45, 170)">130 cm</text>
+
+    <!-- Access arrow from back -->
+    <line x1="280" y1="120" x2="210" y2="120" stroke="#2ecc71" stroke-width="2" marker-end="url(#arrowGreen)"/>
+    <text x="285" y="115" class="label" fill="#2ecc71">גישה</text>
+    <text x="285" y="130" class="label" fill="#2ecc71">מאחורה</text>
+
+    <line x1="280" y1="280" x2="210" y2="280" stroke="#2ecc71" stroke-width="2" marker-end="url(#arrowGreen)"/>
+    <text x="285" y="275" class="label" fill="#2ecc71">גישה</text>
+    <text x="285" y="290" class="label" fill="#2ecc71">מאחורה</text>
+  </g>
+
+  <defs>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2ecc71"/>
+    </marker>
+  </defs>
+
+  <!-- ==================== TOP VIEW ==================== -->
+  <rect x="50" y="1170" width="1100" height="520" class="section-bg" rx="5"/>
+  <text x="600" y="1200" text-anchor="middle" class="spec-title">Top View (מבט מלמעלה)</text>
+
+  <g transform="translate(200, 1260)">
+    <!-- Wall -->
+    <rect x="0" y="0" width="650" height="15" fill="#e0e0e0" stroke="#999" stroke-width="1"/>
+    <text x="325" y="12" text-anchor="middle" class="label" font-size="11">WALL</text>
+
+    <!-- Shutter opening -->
+    <line x1="25" y1="20" x2="525" y2="20" stroke="#333" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="275" y="35" text-anchor="middle" class="note">פתח תריס — 200 cm</text>
+
+    <!-- Fridge (top view) -->
+    <rect x="25" y="45" width="175" height="175" fill="#ddd" stroke="#999" stroke-width="2" rx="3"/>
+    <text x="112" y="130" text-anchor="middle" class="label">מקרר</text>
+    <text x="112" y="148" text-anchor="middle" class="note">70×70</text>
+
+    <!-- Gap -->
+    <line x1="205" y1="45" x2="205" y2="220" stroke="#ccc" stroke-width="1" stroke-dasharray="3,3"/>
+
+    <!-- Vitrine (top view) -->
+    <rect x="210" y="45" width="300" height="175" class="wood" stroke="#333" stroke-width="2" opacity="0.6"/>
+    <!-- Internal structure lines -->
+    <rect x="215" y="50" width="290" height="165" fill="#fff" stroke="#666" stroke-width="1"/>
+
+    <!-- Glass front indication -->
+    <rect x="210" y="215" width="300" height="5" fill="#4a90d9" opacity="0.8"/>
+    <text x="360" y="236" text-anchor="middle" class="label" fill="#4a90d9">חזית זכוכית</text>
+
+    <!-- Back opening indication -->
+    <line x1="215" y1="50" x2="505" y2="50" stroke="#2ecc71" stroke-width="3"/>
+    <text x="360" y="66" text-anchor="middle" class="label" fill="#2ecc71" font-size="11">גישה מאחורה (פתוח)</text>
+
+    <!-- Cash drawer area -->
+    <rect x="230" y="60" width="130" height="100" fill="#c4a882" stroke="#8B7355" stroke-width="1" opacity="0.5"/>
+    <text x="295" y="108" text-anchor="middle" class="label" font-size="10">מגירת</text>
+    <text x="295" y="122" text-anchor="middle" class="label" font-size="10">קופה</text>
+
+    <!-- Wallets area -->
+    <rect x="365" y="60" width="60" height="100" fill="#c4a882" stroke="#8B7355" stroke-width="1" opacity="0.5"/>
+    <text x="395" y="108" text-anchor="middle" class="label" font-size="9">ארנקים</text>
+
+    <!-- Shelves (display areas shown below drawer) -->
+    <text x="360" y="190" text-anchor="middle" class="note">מדפי תצוגה מתחת</text>
+
+    <!-- Room direction -->
+    <line x1="275" y1="290" x2="275" y2="330" stroke="#333" stroke-width="1.5" marker-end="url(#arrowBlack)"/>
+    <text x="275" y="348" text-anchor="middle" class="label">ROOM →</text>
+
+    <!-- Sofa reference -->
+    <rect x="100" y="350" width="400" height="30" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="8,4" rx="3"/>
+    <text x="300" y="370" text-anchor="middle" class="note">ספת זיגזג (מול הוויטרינה)</text>
+
+    <!-- DIMENSION LINES -->
+    <!-- Fridge width -->
+    <line x1="25" y1="250" x2="200" y2="250" class="dim-line"/>
+    <polygon points="25,250 33,246 33,254" class="dim-arrow"/>
+    <polygon points="200,250 192,246 192,254" class="dim-arrow"/>
+    <text x="112" y="268" text-anchor="middle" class="dim">70 cm</text>
+
+    <!-- Vitrine width -->
+    <line x1="210" y1="250" x2="510" y2="250" class="dim-line"/>
+    <polygon points="210,250 218,246 218,254" class="dim-arrow"/>
+    <polygon points="510,250 502,246 502,254" class="dim-arrow"/>
+    <text x="360" y="268" text-anchor="middle" class="dim">120 cm</text>
+
+    <!-- Depth -->
+    <line x1="540" y1="45" x2="540" y2="220" class="dim-line"/>
+    <polygon points="540,45 536,53 544,53" class="dim-arrow"/>
+    <polygon points="540,220 536,212 544,212" class="dim-arrow"/>
+    <text x="570" y="135" text-anchor="middle" class="dim" transform="rotate(90, 570, 135)">70 cm</text>
+
+    <!-- Total -->
+    <line x1="25" y1="280" x2="510" y2="280" class="dim-line"/>
+    <polygon points="25,280 33,276 33,284" class="dim-arrow"/>
+    <polygon points="510,280 502,276 502,284" class="dim-arrow"/>
+    <text x="267" y="298" text-anchor="middle" class="dim">190 cm (סה"כ)</text>
+  </g>
+
+  <defs>
+    <marker id="arrowBlack" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+
+  <!-- Footer -->
+  <text x="600" y="1770" text-anchor="middle" class="note">תמרי הנגר — ויטרינה יבשה לבית קפה | דיקט ליבנה 18mm + זכוכית מחוסמת 6mm</text>
+  <text x="600" y="1790" text-anchor="middle" class="note">תאריך: 11/03/2026</text>
+</svg>

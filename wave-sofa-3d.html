@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zigzag Sofa — 3D Visualization</title>
+<title>Wave Sofa — 3D Visualization</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #1a1a1a; overflow: hidden; font-family: Arial, sans-serif; }
@@ -87,18 +87,17 @@
 <body>
 
 <div id="info">
-  <h2>Zigzag Sofa</h2>
-  <span class="sub">Sky (Faux Leather) · Closed Base · Curved · 2 Niches + 3 Peaks</span>
+  <h2>Wave Sofa</h2>
+  <span class="sub">Sky (Faux Leather) · Closed Base · 3 Concave Niches + 4 Peaks</span>
   <div class="row"><span>Total length</span><span class="dim">~433 cm</span></div>
-  <div class="row"><span>Zigzag depth</span><span class="dim">~50 cm</span></div>
+  <div class="row"><span>Wave depth</span><span class="dim">~50 cm</span></div>
   <div class="row"><span>Back height</span><span class="dim">83 cm</span></div>
   <div class="row"><span>Seat surface</span><span class="dim">~51 cm</span></div>
   <div class="row"><span>Seat depth</span><span class="dim">50 cm</span></div>
   <div class="divider"></div>
-  <div class="row"><span>Modules</span><span class="dim">6</span></div>
-  <div class="row"><span>Niches</span><span class="dim">2</span></div>
-  <div class="row"><span>Wall peaks</span><span class="dim">3</span></div>
-  <div class="row"><span>Transitions</span><span class="dim">Curved</span></div>
+  <div class="row"><span>Form</span><span class="dim">continuous wave</span></div>
+  <div class="row"><span>Niches</span><span class="dim">3 (concave)</span></div>
+  <div class="row"><span>Wall peaks</span><span class="dim">4</span></div>
   <div class="row"><span>Seats</span><span class="dim">~12</span></div>
 </div>
 
@@ -237,96 +236,183 @@ baseboard.position.set(0, 5, -6);
 scene.add(baseboard);
 
 // =============================================
-// CURVED SOFA — SMOOTH WAVE, 3 PEAKS + 2 NICHES
+// WAVE SOFA — SINUSOIDAL, 4 PEAKS + 3 CONCAVE NICHES
 // =============================================
 //
-// Same layout as zigzag but with smooth, rounded
-// transitions instead of sharp angular peaks.
+// FLIPPED wave: back touches wall at niches, extends into room at peaks
+// → front (seating) side has 3 concave bays at niches
 //
-// The sofa centerline follows a cosine wave.
-// 60 smooth segments, same dimensions as original.
-// Total along wall: ~433 cm, Wave depth: ~50 cm
+// Wavelength = 433/3 ≈ 144.33 cm
+// Peaks at x = 0, 144.33, 288.67, 433 (back at z=50, far from wall)
+// Niches at x = 72.17, 216.5, 360.83 (back at z=0, touching wall)
+// Front edge = back + 50cm seat depth
+// → concave seating bays at niches (front=50) flanked by peaks (front=100)
 
-const ANG = Math.PI * 35 / 180;
-const MODULE_LEN = 88;
-const PROJ_X = MODULE_LEN * Math.cos(ANG);  // ~72.1 cm
-const PROJ_Z = MODULE_LEN * Math.sin(ANG);  // ~50.5 cm
-const NUM_MODULES = 6;
-const TOTAL_X = NUM_MODULES * PROJ_X;
-const HALF_X = TOTAL_X / 2;
-const AMPLITUDE = PROJ_Z / 2;
+const TOTAL_LENGTH = 433;
+const NUM_SLICES = 120;
+const SLICE_WIDTH = TOTAL_LENGTH / NUM_SLICES;
+const HALF_LENGTH = TOTAL_LENGTH / 2;
+const WAVELENGTH = TOTAL_LENGTH / 3;  // ~144.33 cm
 
-// Curve functions: cosine wave with 2 full periods
-// Peaks (z=0) at t = 1/6, 3/6, 5/6
-// Niches (z=PROJ_Z) at t = 0, 2/6, 4/6, 1
-function curveX(t) { return t * TOTAL_X - HALF_X; }
-function curveZ(t) {
-  return AMPLITUDE * (1 - Math.cos(Math.PI * (t * NUM_MODULES - 1)));
-}
-function curveTangent(t) {
-  const dz = AMPLITUDE * Math.PI * NUM_MODULES * Math.sin(Math.PI * (t * NUM_MODULES - 1));
-  return Math.atan2(dz, TOTAL_X);
+function zBack(xParam) {
+  return 25 + 25 * Math.cos(2 * Math.PI * xParam / WAVELENGTH);
 }
 
-const NUM_SEGMENTS = 60;
+function dzdx(xParam) {
+  return -(2 * Math.PI * 25 / WAVELENGTH) * Math.sin(2 * Math.PI * xParam / WAVELENGTH);
+}
+
 const meshGroups = { sky: [], cushion: [], back: [], trim: [], cushionTop: [] };
 
-for (let i = 0; i < NUM_SEGMENTS; i++) {
-  const t = (i + 0.5) / NUM_SEGMENTS;
-  const t0 = i / NUM_SEGMENTS;
-  const t1 = (i + 1) / NUM_SEGMENTS;
+for (let i = 0; i < NUM_SLICES; i++) {
+  const xParam = (i + 0.5) * SLICE_WIDTH;
+  const xWorld = xParam - HALF_LENGTH;
+  const zb = zBack(xParam);
+  const zCenter = zb + 25;
 
-  const x = curveX(t);
-  const z = curveZ(t);
-  const angle = curveTangent(t);
+  const slope = dzdx(xParam);
+  const rotY = -Math.atan2(slope, 1);
 
-  const dx = curveX(t1) - curveX(t0);
-  const dz = curveZ(t1) - curveZ(t0);
-  const segW = Math.sqrt(dx * dx + dz * dz) + 1;
+  const sw = SLICE_WIDTH + 0.5;
 
   const group = new THREE.Group();
 
-  const base = new THREE.Mesh(new THREE.BoxGeometry(segW, 43, 49), skyMat);
+  // Base
+  const base = new THREE.Mesh(new THREE.BoxGeometry(sw, 43, 49), skyMat);
   base.position.set(0, 21.5, 25);
   base.castShadow = true; base.receiveShadow = true;
   group.add(base);
   meshGroups.sky.push(base);
 
-  const trim = new THREE.Mesh(new THREE.BoxGeometry(segW + 0.5, 2, 49.5), baseTrimMat);
+  // Base trim
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(sw, 2, 49.5), baseTrimMat);
   trim.position.set(0, 1, 25);
   group.add(trim);
   meshGroups.trim.push(trim);
 
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(segW - 1, 7.5, 50), cushionMat);
+  // Seat cushion
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(sw, 7.5, 50), cushionMat);
   seat.position.set(0, 47, 25.5);
   seat.castShadow = true;
   group.add(seat);
   meshGroups.cushion.push(seat);
 
-  const seatTop = new THREE.Mesh(new THREE.BoxGeometry(segW - 3, 1.5, 48), cushionTopMat);
+  // Seat top highlight
+  const seatTop = new THREE.Mesh(new THREE.BoxGeometry(SLICE_WIDTH + 0.3, 1.5, 48), cushionTopMat);
   seatTop.position.set(0, 51.2, 25.5);
   group.add(seatTop);
   meshGroups.cushionTop.push(seatTop);
 
-  const back = new THREE.Mesh(new THREE.BoxGeometry(segW, 28, 9), backMat);
+  // Back panel
+  const back = new THREE.Mesh(new THREE.BoxGeometry(sw, 28, 9), backMat);
   back.position.set(0, 65, 5);
   back.castShadow = true;
   group.add(back);
   meshGroups.back.push(back);
 
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(segW - 2, 4, 8), cushionMat);
+  // Back cap
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(SLICE_WIDTH + 0.3, 4, 8), cushionMat);
   cap.position.set(0, 81, 5);
   cap.castShadow = true;
   group.add(cap);
   meshGroups.cushion.push(cap);
 
-  group.position.set(x, 0, z);
-  group.rotation.y = angle;
+  group.position.set(xWorld, 0, zCenter);
+  group.rotation.y = rotY;
   scene.add(group);
 }
 
 // =============================================
-// CAFE TABLES — one per niche
+// CURVED FILLS — filling gaps between sofa & wall
+// =============================================
+
+const shelfMat = new THREE.MeshStandardMaterial({ color: 0xD4A574, roughness: 0.4, metalness: 0.05 });
+
+// Fills between sofa back and wall — wherever back is away from wall
+// 4 fill sections between consecutive wall-touching points (niches)
+// Plus 2 edge sections from start/end to first/last niche
+const NICHE1 = WAVELENGTH / 2;        // 72.17
+const NICHE2 = 1.5 * WAVELENGTH;      // 216.5
+const NICHE3 = 2.5 * WAVELENGTH;      // 360.83
+const fillRanges = [
+  { xStart: 0, xEnd: NICHE1 },         // left edge to niche 1
+  { xStart: NICHE1, xEnd: NICHE2 },    // niche 1 to niche 2 (peak at 144.33)
+  { xStart: NICHE2, xEnd: NICHE3 },    // niche 2 to niche 3 (peak at 288.67)
+  { xStart: NICHE3, xEnd: TOTAL_LENGTH }, // niche 3 to right edge
+];
+
+fillRanges.forEach(({ xStart, xEnd }) => {
+  const shelfHeight = 83;
+  const nPts = 40;
+
+  const shape = new THREE.Shape();
+
+  // Start at left peak (wall side, z=0)
+  const xWorldStart = xStart - HALF_LENGTH;
+  const xWorldEnd = xEnd - HALF_LENGTH;
+
+  shape.moveTo(xWorldStart, 0);
+  // Line along wall to right peak
+  shape.lineTo(xWorldEnd, 0);
+
+  // Trace back along the sine curve from right to left
+  for (let j = nPts; j >= 0; j--) {
+    const xp = xStart + (xEnd - xStart) * j / nPts;
+    const sx = xp - HALF_LENGTH;
+    const sz = -zBack(xp); // negative because shape Y maps to -Z in world
+    shape.lineTo(sx, sz);
+  }
+
+  shape.closePath();
+
+  const fillGeo = new THREE.ExtrudeGeometry(shape, { depth: shelfHeight, bevelEnabled: false });
+  const fill = new THREE.Mesh(fillGeo, shelfMat);
+  fill.rotation.x = -Math.PI / 2;
+  fill.castShadow = true;
+  fill.receiveShadow = true;
+  scene.add(fill);
+});
+
+// =============================================
+// PLANT POTS — one per niche
+// =============================================
+
+// Plant pots on fills at peak centers (where fill is tallest)
+// Peaks at x = 0, WAVELENGTH, 2*WAVELENGTH, 3*WAVELENGTH
+// Use 2 inner peaks (outer peaks at edges have less room)
+const peakXParams = [WAVELENGTH, 2 * WAVELENGTH];
+
+peakXParams.forEach(xp => {
+  const potMat = new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.7 });
+  const plantMat = new THREE.MeshStandardMaterial({ color: 0x4A7C3F, roughness: 0.8 });
+  const potGroup = new THREE.Group();
+
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(7, 5, 12, 16), potMat);
+  pot.position.set(0, 6, 0);
+  pot.castShadow = true;
+  potGroup.add(pot);
+
+  const soil = new THREE.Mesh(
+    new THREE.CylinderGeometry(6.5, 6.5, 1, 16),
+    new THREE.MeshStandardMaterial({ color: 0x3E2723, roughness: 0.9 })
+  );
+  soil.position.set(0, 12.5, 0);
+  potGroup.add(soil);
+
+  [[0, 22, 0, 8], [-4, 18, 3, 5], [5, 19, -2, 5], [0, 26, 1, 5]].forEach(([fx, fy, fz, fr]) => {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(fr, 12, 10), plantMat);
+    leaf.position.set(fx, fy, fz);
+    leaf.castShadow = true;
+    potGroup.add(leaf);
+  });
+
+  const xWorld = xp - HALF_LENGTH;
+  potGroup.position.set(xWorld, 83, zBack(xp) / 3);
+  scene.add(potGroup);
+});
+
+// =============================================
+// CAFE TABLES — one per niche (concave bay)
 // =============================================
 
 const tableMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.3, metalness: 0.6 });
@@ -351,15 +437,12 @@ function createCafeTable(x, z) {
   scene.add(g);
 }
 
-// Peak centers: between modules (0,1), (2,3), (4,5)
-// Peaks are at wall side — tables placed in front of peaks
-const peakTableZ = 70;
-const peakCenterXs = [
-  PROJ_X * 1 - HALF_X,   // peak 1 (left)
-  PROJ_X * 3 - HALF_X,   // peak 2 (center)
-  PROJ_X * 5 - HALF_X,   // peak 3 (right)
-];
-peakCenterXs.forEach(px => createCafeTable(px, peakTableZ));
+// Tables at niche centers (concave front bays)
+// At niches: back=0, front=50. Table ~18cm in front → z=68
+const nicheCenterXParams = [NICHE1, NICHE2, NICHE3];
+const nicheCenterXWorlds = nicheCenterXParams.map(xp => xp - HALF_LENGTH);
+const nicheTableZ = 68;
+nicheCenterXWorlds.forEach(nx => createCafeTable(nx, nicheTableZ));
 
 // =============================================
 // CAFE CHAIRS — 2 per table, facing the sofa
@@ -390,11 +473,11 @@ function createChair(x, z, rotY) {
   scene.add(g);
 }
 
-const chairZ = peakTableZ + 38;
+const chairZ = nicheTableZ + 36;
 const chairSpacing = 28;
-peakCenterXs.forEach(px => {
-  createChair(px - chairSpacing, chairZ, Math.PI);
-  createChair(px + chairSpacing, chairZ, Math.PI);
+nicheCenterXWorlds.forEach(nx => {
+  createChair(nx - chairSpacing, chairZ, Math.PI);
+  createChair(nx + chairSpacing, chairZ, Math.PI);
 });
 
 // =============================================
@@ -404,79 +487,11 @@ peakCenterXs.forEach(px => {
 const nicheMarkMat = new THREE.MeshStandardMaterial({
   color: 0xB8A888, roughness: 0.9, transparent: true, opacity: 0.15,
 });
-peakCenterXs.forEach(px => {
+nicheCenterXWorlds.forEach(nx => {
   const mark = new THREE.Mesh(new THREE.CircleGeometry(35, 32), nicheMarkMat);
   mark.rotation.x = -Math.PI / 2;
-  mark.position.set(px, 0.2, peakTableZ);
+  mark.position.set(nx, 0.2, nicheTableZ);
   scene.add(mark);
-});
-
-// =============================================
-// CURVED FILLS — filling gaps between sofa & wall
-// =============================================
-
-const shelfMat = new THREE.MeshStandardMaterial({ color: 0xD4A574, roughness: 0.4, metalness: 0.05 });
-
-const nicheCenterXs = [
-  PROJ_X * 2 - HALF_X,   // niche 1
-  PROJ_X * 4 - HALF_X,   // niche 2
-];
-
-// Two fills: peak-to-peak through each niche, with curved boundary
-const fillPairs = [
-  { tStart: 1/6, tEnd: 3/6, nicheT: 2/6, nicheIdx: 0 },
-  { tStart: 3/6, tEnd: 5/6, nicheT: 4/6, nicheIdx: 1 },
-];
-
-fillPairs.forEach(({ tStart, tEnd, nicheT, nicheIdx }) => {
-  const shelfHeight = 83;
-  const nPts = 40;
-
-  // Curved shape in XZ plane (shape y = -world z)
-  const shape = new THREE.Shape();
-  for (let j = 0; j <= nPts; j++) {
-    const t = tStart + (tEnd - tStart) * j / nPts;
-    const sx = curveX(t);
-    const sz = -curveZ(t);
-    if (j === 0) shape.moveTo(sx, sz);
-    else shape.lineTo(sx, sz);
-  }
-  shape.closePath(); // straight line along wall (z=0) back to start
-
-  const fillGeo = new THREE.ExtrudeGeometry(shape, { depth: shelfHeight, bevelEnabled: false });
-  const fill = new THREE.Mesh(fillGeo, shelfMat);
-  fill.rotation.x = -Math.PI / 2;
-  fill.castShadow = true;
-  fill.receiveShadow = true;
-  scene.add(fill);
-
-  // ----- Plant pot on top -----
-  const potMat = new THREE.MeshStandardMaterial({ color: 0x8B5E3C, roughness: 0.7 });
-  const plantMat = new THREE.MeshStandardMaterial({ color: 0x4A7C3F, roughness: 0.8 });
-  const potGroup = new THREE.Group();
-
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(7, 5, 12, 16), potMat);
-  pot.position.set(0, 6, 0);
-  pot.castShadow = true;
-  potGroup.add(pot);
-
-  const soil = new THREE.Mesh(
-    new THREE.CylinderGeometry(6.5, 6.5, 1, 16),
-    new THREE.MeshStandardMaterial({ color: 0x3E2723, roughness: 0.9 })
-  );
-  soil.position.set(0, 12.5, 0);
-  potGroup.add(soil);
-
-  [[0, 22, 0, 8], [-4, 18, 3, 5], [5, 19, -2, 5], [0, 26, 1, 5]].forEach(([fx, fy, fz, fr]) => {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(fr, 12, 10), plantMat);
-    leaf.position.set(fx, fy, fz);
-    leaf.castShadow = true;
-    potGroup.add(leaf);
-  });
-
-  const nx = nicheCenterXs[nicheIdx];
-  potGroup.position.set(nx, shelfHeight, PROJ_Z / 3);
-  scene.add(potGroup);
 });
 
 // =============================================
